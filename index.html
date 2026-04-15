@@ -229,7 +229,7 @@ button:active {
     <h1>All set!</h1>
     <p>We'll be in touch soon!</p>
     <div style="background: #eef2ff; padding: 15px; border-radius: 10px; margin-top: 30px; border: 2px dashed var(--primary);">
-        <strong>Important:</strong> Bring ID to the first meeting.<br>OUR FIRST WORKSHOP IS ON FEB 21 <br> COME JOIN US! 🧋🎉
+        <strong>Important:</strong> Bring ID to the first meeting.<br>SOMETHING IS COOKING! 🍳
     </div>
   </div>
 
@@ -307,7 +307,9 @@ function init3D() {
 let currentTab = 0;
 window.onload = () => {
   init3D();
+  checkProgress();
   showTab(currentTab);
+  
 };
 
 const phoneOpts = { utilsScript: "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js", separateDialCode: true };
@@ -455,91 +457,88 @@ document.getElementById('regForm').addEventListener('input', () => {
   data.currentTab = currentTab;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 });
-function checkProgress() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved) document.getElementById('resumeModal').style.display = 'flex';
-}
 
 function loadProgress() {
-  const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
-  const form = document.getElementById('regForm');
-  
-  
-  Object.keys(data).forEach(key => {
-    const input = form.querySelector(`[name="${key}"]`);
-    if (input) input.value = data[key];
-  });
+    const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    const form = document.getElementById('regForm');
+    
+    // 1. Fill values
+    Object.keys(data).forEach(key => {
+        const input = form.querySelector(`[name="${key}"]`);
+        if (input) input.value = data[key];
+    });
 
-  
-  let x = document.getElementsByClassName("tab");
-  for (let i = 0; i < x.length; i++) {
-    x[i].style.display = "none";
-  }
+    // 2. Force hide all tabs before showing the correct one
+    let tabs = document.getElementsByClassName("tab");
+    for (let i = 0; i < tabs.length; i++) {
+        tabs[i].style.display = "none";
+    }
 
-  
-  currentTab = parseInt(data.currentTab) || 0;
-  document.getElementById('resumeModal').style.display = 'none';
-  showTab(currentTab);
+    // 3. Set currentTab and show it
+    currentTab = parseInt(data.currentTab) || 0;
+    document.getElementById('resumeModal').style.display = 'none';
+    
+    // Explicitly show the tab instead of just calling showTab()
+    tabs[currentTab].style.display = "block";
+    showTab(currentTab); 
 }
-
-function clearProgress() {
-  localStorage.removeItem(STORAGE_KEY);
-  document.getElementById('resumeModal').style.display = 'none';
-}
-window.onload = () => {
-  init3D();
-  showTab(currentTab);
-  checkProgress();
-};
-
-
 
 
 
 async function submitForm() {
   const formData = new FormData(document.getElementById("regForm"));
   const data = Object.fromEntries(formData.entries());
+  
+  // Capturing the final international formats for all 3 phone inputs
   data.phone_final = phoneInput.getNumber();
+  data.ec1_phone_final = ec1PhoneInput.getNumber();
+  data.ec2_phone_final = ec2PhoneInput.getNumber();
 
-  const payload = {
-    surveyId: 'cmm424jx1mkn3s901rggr4g96',
-    environmentId: 'cmm420resmievs2016su2sgvn',
-    data: data
-  };
+  // Ensuring phone_raw fields are explicitly mapped if names differ
+  data.phone_raw = data.phone_raw || "";
+  data.ec1_phone_raw = data.ec1_phone_raw || "";
+  data.ec2_phone_raw = data.ec2_phone_raw || "";
 
   try {
-    await fetch('https://app.formbricks.com/api/v1/client/responses', {
+    const response = await fetch('https://signups.rf.gd/save.php', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      headers: { 
+        'Content-Type': 'application/json' 
+      },
+      body: JSON.stringify(data)
     });
-    localStorage.removeItem('join_form_progress');
+
+    if (response.ok) {
+      localStorage.removeItem(STORAGE_KEY);
+      console.log("Submission successful");
+      // The form will naturally proceed to the 'Thank You' tab via the nextPrev logic
+    } else {
+      const errorData = await response.json();
+      console.error("Server error:", errorData.message);
+      alert("Submission failed. Please check your connection.");
+    }
   } catch (e) {
-    console.error("Submission failed", e);
+    console.error("Network error: Could not connect to signups.rf.gd", e);
+    alert("Could not reach the server. Please try again later.");
   }
 }
 
+function clearProgress() {
+    localStorage.removeItem(STORAGE_KEY);
+    document.getElementById('resumeModal').style.display = 'none';
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// Update checkProgress to only show if there's actual data
+function checkProgress() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+        const data = JSON.parse(saved);
+        // Only show if user actually typed a name
+        if (data.fname || data.lname) {
+            document.getElementById('resumeModal').style.display = 'flex';
+        }
+    }
+}
 
 
 
@@ -547,6 +546,9 @@ async function submitForm() {
 </script>
 </body>
 </html>
+
+
+
 
 
 
